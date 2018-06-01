@@ -1239,20 +1239,30 @@ int mecab_do(int argc, char **argv) {
       if (!partial) {
         ifs->getline(ibuf, ibufsize);
       } else {
-        std::string sentence;
         MeCab::scoped_fixed_array<char, BUF_SIZE> line;
+        char *cbuf = ibuf;
+        *cbuf = '\0';
+        size_t rbufsize = ibufsize;
         for (;;) {
           if (!ifs->getline(line.get(), line.size())) {
             ifs->clear(std::ios::eofbit|std::ios::badbit);
             break;
           }
-          sentence += line.get();
-          sentence += '\n';
+          const size_t line_len = std::strlen(line.get());
+          if (rbufsize >= line_len + 2) {
+            std::memcpy(cbuf, line.get(), line_len);
+            cbuf += line_len;
+            *cbuf = '\n';
+            *(++cbuf) = '\0';
+            rbufsize -= line_len;
+          }
+          else {
+            rbufsize = 0;
+          }
           if (std::strcmp(line.get(), "EOS") == 0 || line[0] == '\0') {
             break;
           }
         }
-        std::strncpy(ibuf, sentence.c_str(), ibufsize);
       }
       if (ifs->eof() && !ibuf[0]) {
         return false;
